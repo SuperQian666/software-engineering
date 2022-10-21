@@ -1,13 +1,22 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/widget"
 )
 
 func main() {
-	r := gin.Default()
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "hello world"})
-	})
-	r.Run()
+	a := app.New()
+	w := a.NewWindow("Hello")
+
+	hello := widget.NewLabel("Hello Fyne!")
+	w.SetContent(container.NewVBox(
+		hello,
+		widget.NewButton("Hi!", func() {
+			hello.SetText("Welcome :)")
+		}),
+	))
+
+	w.ShowAndRun()
 }

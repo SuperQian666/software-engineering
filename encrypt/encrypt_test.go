@@ -2,6 +2,7 @@ package encrypt
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 )
@@ -30,4 +31,14 @@ func TestAesTime(t *testing.T) {
 		DecryptByAes(str)
 	}
 	fmt.Printf("%v次 - %v", count, time.Since(startTime))
+}
+
+func TestFunction(t *testing.T) {
+	filePath := "../src.txt"
+	f, _ := os.Open(filePath)
+	finfo, _ := f.Stat()
+	name := finfo.Name()
+	size := finfo.Size()
+	fmt.Printf("%v\n", name)
+	fmt.Printf("%v\n", size)
 }
