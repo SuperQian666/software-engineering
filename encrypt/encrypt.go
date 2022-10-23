@@ -14,9 +14,23 @@ import (
 //  3、对得到的加密数据，进行base64加密，得到字符串
 // 解密过程相反
 
-//16,24,32位字符串的话，分别对应AES-128，AES-192，AES-256 加密方法
+func generateKey(key []byte) (genKey []byte) {
+	genKey = make([]byte, 16)
+	if len(key) < 16 {
+		for i := 0; i < 16; i++ {
+			genKey[i] = key[i%len(key)]
+		}
+		return genKey
+	}
 
-var PwdKey = []byte("Ab#wkn@1e,[;%swvmjjo!!qw")
+	copy(genKey, key)
+	for i := 16; i < len(key); {
+		for j := 0; j < 16 && i < len(key); j, i = j+1, i+1 {
+			genKey[j] ^= key[i]
+		}
+	}
+	return genKey
+}
 
 //pkcs7Padding 填充
 func pkcs7Padding(data []byte, blockSize int) []byte {
@@ -40,6 +54,7 @@ func pkcs7UnPadding(data []byte) ([]byte, error) {
 
 //AesEncrypt 加密
 func AesEncrypt(data []byte, key []byte) ([]byte, error) {
+	key = generateKey(key)
 	//创建加密实例
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -60,6 +75,7 @@ func AesEncrypt(data []byte, key []byte) ([]byte, error) {
 
 //AesDecrypt 解密
 func AesDecrypt(data []byte, key []byte) ([]byte, error) {
+	key = generateKey(key)
 	//创建实例
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -82,8 +98,9 @@ func AesDecrypt(data []byte, key []byte) ([]byte, error) {
 }
 
 //EncryptByAes Aes加密 后 base64 再加
-func EncryptByAes(data []byte) (string, error) {
-	res, err := AesEncrypt(data, PwdKey)
+func EncryptByAes(data []byte, key string) (string, error) {
+	pwdKey := []byte(key)
+	res, err := AesEncrypt(data, pwdKey)
 	if err != nil {
 		return "", err
 	}
@@ -91,10 +108,11 @@ func EncryptByAes(data []byte) (string, error) {
 }
 
 //DecryptByAes Aes 解密
-func DecryptByAes(data string) ([]byte, error) {
+func DecryptByAes(data string, key string) ([]byte, error) {
+	pwdKey := []byte(key)
 	dataByte, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
 		return nil, err
 	}
-	return AesDecrypt(dataByte, PwdKey)
+	return AesDecrypt(dataByte, pwdKey)
 }
