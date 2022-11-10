@@ -26,7 +26,7 @@ func main() {
 		AssignTo: &mw.MainWindow, //窗口重定向至mw，重定向后可由重定向变量控制控件
 		Icon:     "test.ico",     //窗体图标
 		Title:    "文件备份（01）",     //标题
-		MinSize:  Size{Width: 400, Height: 300},
+		MinSize:  Size{Width: 450, Height: 600},
 		Size:     Size{600, 400},
 		MenuItems: []MenuItem{
 			Menu{
@@ -62,7 +62,7 @@ func main() {
 					Action{
 						Text: "关于",
 						OnTriggered: func() {
-							walk.MsgBox(mw, "关于", "这是一个菜单和工具栏的实例",
+							walk.MsgBox(mw, "关于", "文件备份软件",
 								walk.MsgBoxIconInformation|walk.MsgBoxDefButton1)
 						},
 					},
@@ -75,14 +75,70 @@ func main() {
 			mw.inTE.SetText(strings.Join(files, "\r\n"))
 		},
 		Children: []Widget{ //控件组
-			TextEdit{
-				AssignTo: &mw.edit,
+			GroupBox{
+				Layout: HBox{},
+				Children: []Widget{
+					PushButton{
+						Text:      "加密",
+						OnClicked: mw.file_Encrypt_lrx, //点击事件响应函数
+					},
+					PushButton{
+						Text:      "解密",
+						OnClicked: mw.file_Decrypt_lrx, //点击事件响应函数
+					},
+				},
 			},
-			TextEdit{AssignTo: &mw.inTE,
-				ReadOnly: true,
-				Text:     "Drop files here, from windows explorer...",
+			GroupBox{
+				Layout: HBox{},
+				Children: []Widget{
+					PushButton{
+						Text:      "备份",
+						OnClicked: mw.file_Copy_lrx, //点击事件响应函数
+					},
+					PushButton{
+						Text:      "还原",
+						OnClicked: mw.file_Restore_lrx, //点击事件响应函数
+					},
+				},
 			},
-			HSplitter{
+			GroupBox{
+				Layout: HBox{},
+				Children: []Widget{
+					PushButton{
+						Text:      "压缩",
+						OnClicked: mw.file_Compress_lrx, //点击事件响应函数
+					},
+					PushButton{
+						Text:      "解压",
+						OnClicked: mw.file_Decompress_lrx, //点击事件响应函数
+					},
+				},
+			},
+			GroupBox{
+				Layout: HBox{},
+				Children: []Widget{
+					PushButton{
+						Text:      "云备份",
+						OnClicked: mw.file_Copy_Cloud_lrx, //点击事件响应函数
+					},
+					PushButton{
+						Text:      "云还原",
+						OnClicked: mw.file_Restore_Cloud_lrx, //点击事件响应函数
+					},
+				},
+			},
+			GroupBox{
+				Layout: HBox{},
+				Children: []Widget{
+					TextEdit{
+						AssignTo: &mw.inTE,
+						ReadOnly: true,
+						Text:     "Drop files here, from windows explorer...",
+					},
+				},
+			},
+			GroupBox{
+				Layout: HBox{},
 				Children: []Widget{
 					Label{
 						Text: "待输入路径",
@@ -94,7 +150,8 @@ func main() {
 					},
 				},
 			},
-			HSplitter{
+			GroupBox{
+				Layout: HBox{},
 				Children: []Widget{
 
 					Label{
@@ -105,6 +162,16 @@ func main() {
 						Text:      "另存为",
 						OnClicked: mw.saveFile,
 					},
+				},
+			},
+
+			TextEdit{
+				AssignTo: &mw.edit,
+			},
+			PushButton{
+				Text: "退出",
+				OnClicked: func() {
+					mw.Close()
 				},
 			},
 		},
@@ -118,11 +185,12 @@ func main() {
 	mw.Run() //运行
 }
 
+// 选择需要保存的文件
 func (mw *MyMainWindow) selectFile() {
 
 	dlg := new(walk.FileDialog)
 	dlg.Title = "选择文件"
-	dlg.Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*"
+	dlg.Filter = "所有文件 (*.*)|*.*|图片(*.gif;*.jpg;*.jpeg;*.bmp;*.png)|*.gif;*.jpg;*.jpeg;*.bmp;*.png;|word文件(*.doc)|*.doc|excel文件(*.xls)|*.xls|文本文件 (*.txt)|*.txt"
 
 	mw.inTE.SetText("") //通过重定向变量设置TextEdit的Text
 	if ok, err := dlg.ShowOpen(mw); err != nil {
@@ -138,11 +206,12 @@ func (mw *MyMainWindow) selectFile() {
 	mw.inTE.AppendText(s1)
 }
 
+// 选择保存路径并保存待输入路径
 func (mw *MyMainWindow) saveFile() {
 
 	dlg := new(walk.FileDialog)
 	dlg.Title = "另存为"
-	dlg.Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*"
+	dlg.Filter = "所有文件 (*.*)|*.*|图片(*.gif;*.jpg;*.jpeg;*.bmp;*.png)|*.gif;*.jpg;*.jpeg;*.bmp;*.png;|word文件(*.doc)|*.doc|excel文件(*.xls)|*.xls|文本文件 (*.txt)|*.txt"
 
 	if ok, err := dlg.ShowSave(mw); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -170,4 +239,36 @@ func (mw *MyMainWindow) saveFile() {
 	//copy
 	io.Copy(f, strings.NewReader(data))
 	f.Close()
+}
+
+// 加密
+func (mw *MyMainWindow) file_Encrypt_lrx() {
+}
+
+// 解密
+func (mw *MyMainWindow) file_Decrypt_lrx() {
+}
+
+// 备份
+func (mw *MyMainWindow) file_Copy_lrx() {
+}
+
+// 还原
+func (mw *MyMainWindow) file_Restore_lrx() {
+}
+
+// 压缩
+func (mw *MyMainWindow) file_Compress_lrx() {
+}
+
+// 解压
+func (mw *MyMainWindow) file_Decompress_lrx() {
+}
+
+// 云备份
+func (mw *MyMainWindow) file_Copy_Cloud_lrx() {
+}
+
+// 云解压
+func (mw *MyMainWindow) file_Restore_Cloud_lrx() {
 }
