@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
@@ -25,7 +26,7 @@ func main() {
 	err := MainWindow{
 		AssignTo: &mw.MainWindow, //窗口重定向至mw，重定向后可由重定向变量控制控件
 		Icon:     "test.ico",     //窗体图标
-		Title:    "文件备份（01）",     //标题
+		Title:    "文件备份02",       //标题
 		MinSize:  Size{Width: 450, Height: 600},
 		Size:     Size{600, 400},
 		MenuItems: []MenuItem{
@@ -86,11 +87,6 @@ func main() {
 						Text:      "解密",
 						OnClicked: mw.file_Decrypt_lrx, //点击事件响应函数
 					},
-				},
-			},
-			GroupBox{
-				Layout: HBox{},
-				Children: []Widget{
 					PushButton{
 						Text:      "备份",
 						OnClicked: mw.file_Copy_lrx, //点击事件响应函数
@@ -101,6 +97,7 @@ func main() {
 					},
 				},
 			},
+
 			GroupBox{
 				Layout: HBox{},
 				Children: []Widget{
@@ -112,11 +109,6 @@ func main() {
 						Text:      "解压",
 						OnClicked: mw.file_Decompress_lrx, //点击事件响应函数
 					},
-				},
-			},
-			GroupBox{
-				Layout: HBox{},
-				Children: []Widget{
 					PushButton{
 						Text:      "云备份",
 						OnClicked: mw.file_Copy_Cloud_lrx, //点击事件响应函数
@@ -127,6 +119,7 @@ func main() {
 					},
 				},
 			},
+
 			GroupBox{
 				Layout: HBox{},
 				Children: []Widget{
@@ -164,7 +157,25 @@ func main() {
 					},
 				},
 			},
-
+			GroupBox{
+				Layout: HBox{},
+				Children: []Widget{
+					TableView{
+						Name:             "tableView", // Name is needed for settings persistence
+						AlternatingRowBG: true,
+						ColumnsOrderable: true,
+						Columns: []TableViewColumn{
+							// Name is needed for settings persistence
+							{Name: "#", DataMember: "Id", Width: 40}, // Use DataMember, if names differ
+							{Name: "FileName"},
+							{Name: "SourcePath", Width: 180},
+							{Name: "TargetPath", Width: 180},
+							{Name: "SaveTime", Format: "2006-01-02 15:04:05", Width: 150},
+						},
+						Model: NewFooModel(),
+					},
+				},
+			},
 			TextEdit{
 				AssignTo: &mw.edit,
 			},
@@ -243,32 +254,84 @@ func (mw *MyMainWindow) saveFile() {
 
 // 加密
 func (mw *MyMainWindow) file_Encrypt_lrx() {
+	mw.showNoneMessage("加密成功")
+
 }
 
 // 解密
 func (mw *MyMainWindow) file_Decrypt_lrx() {
+	mw.showNoneMessage("解密成功")
 }
 
 // 备份
 func (mw *MyMainWindow) file_Copy_lrx() {
+	mw.showNoneMessage("备份成功")
 }
 
 // 还原
 func (mw *MyMainWindow) file_Restore_lrx() {
+	mw.showNoneMessage("还原成功")
 }
 
 // 压缩
 func (mw *MyMainWindow) file_Compress_lrx() {
+	mw.showNoneMessage("压缩成功")
 }
 
 // 解压
 func (mw *MyMainWindow) file_Decompress_lrx() {
+	mw.showNoneMessage("解压成功")
 }
 
 // 云备份
 func (mw *MyMainWindow) file_Copy_Cloud_lrx() {
+	mw.showNoneMessage("云备份成功")
 }
 
 // 云解压
 func (mw *MyMainWindow) file_Restore_Cloud_lrx() {
+	mw.showNoneMessage("云解压成功")
+}
+
+// 提示框
+func (mw *MyMainWindow) showNoneMessage(message string) {
+	walk.MsgBox(mw, "提示", message, walk.MsgBoxIconInformation)
+}
+
+// 显示已备份的文件
+func NewFooModel() *FooModel {
+	//now := time.Now()
+
+	//rand.Seed(now.UnixNano())
+
+	m := &FooModel{items: make([]*Foo, 20)}
+
+	for i := range m.items {
+		m.items[i] = &Foo{
+			Id:         i,
+			FileName:   "文件名",
+			SourcePath: "源路径",
+			TargetPath: "目标路径",
+			SaveTime:   time.Now(), //time.Unix(rand.Int63n(now.Unix()), 0),
+		}
+	}
+
+	return m
+}
+
+type FooModel struct {
+	walk.SortedReflectTableModelBase
+	items []*Foo
+}
+
+func (m *FooModel) Items() interface{} {
+	return m.items
+}
+
+type Foo struct {
+	Id         int
+	FileName   string
+	SourcePath string
+	TargetPath string
+	SaveTime   time.Time
 }
