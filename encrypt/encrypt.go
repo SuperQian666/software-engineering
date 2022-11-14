@@ -52,8 +52,8 @@ func pkcs7UnPadding(data []byte) ([]byte, error) {
 	return data[:(length - unPadding)], nil
 }
 
-//AesEncrypt 加密
-func AesEncrypt(data []byte, key []byte) ([]byte, error) {
+//aesEncrypt 加密
+func aesEncrypt(data []byte, key []byte) ([]byte, error) {
 	key = generateKey(key)
 	//创建加密实例
 	block, err := aes.NewCipher(key)
@@ -73,8 +73,8 @@ func AesEncrypt(data []byte, key []byte) ([]byte, error) {
 	return crypted, nil
 }
 
-//AesDecrypt 解密
-func AesDecrypt(data []byte, key []byte) ([]byte, error) {
+//aesDecrypt 解密
+func aesDecrypt(data []byte, key []byte) ([]byte, error) {
 	key = generateKey(key)
 	//创建实例
 	block, err := aes.NewCipher(key)
@@ -98,9 +98,9 @@ func AesDecrypt(data []byte, key []byte) ([]byte, error) {
 }
 
 //EncryptByAes Aes加密 后 base64 再加
-func EncryptByAes(data []byte, key string) (string, error) {
+func encryptByAes(data []byte, key string) (string, error) {
 	pwdKey := []byte(key)
-	res, err := AesEncrypt(data, pwdKey)
+	res, err := aesEncrypt(data, pwdKey)
 	if err != nil {
 		return "", err
 	}
@@ -108,11 +108,11 @@ func EncryptByAes(data []byte, key string) (string, error) {
 }
 
 //DecryptByAes Aes 解密
-func DecryptByAes(data string, key string) ([]byte, error) {
+func decryptByAes(data string, key string) ([]byte, error) {
 	pwdKey := []byte(key)
 	dataByte, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
 		return nil, err
 	}
-	return AesDecrypt(dataByte, pwdKey)
+	return aesDecrypt(dataByte, pwdKey)
 }

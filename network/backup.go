@@ -6,9 +6,9 @@ import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -16,8 +16,6 @@ var BaseUploadPath = "/var/file"
 var user = "soft"
 var passwd = "software_user"
 var hostAddr = "121.4.113.117:22"
-
-//todo 增加文件夹备份功能
 
 //利用ssh连接云服务器
 func connect(user, passwd, hostAddr string) (*sftp.Client, error) {
@@ -50,11 +48,11 @@ func connect(user, passwd, hostAddr string) (*sftp.Client, error) {
 	return sftpClient, nil
 }
 
-func uploadDirectory(sftpClient *sftp.Client, localPath string, remotePath string) {
+func uploadDirectory(sftpClient *sftp.Client, localPath string, remotePath string) error {
 	//打开本地文件夹流
 	localFiles, err := ioutil.ReadDir(localPath)
 	if err != nil {
-		log.Fatal("路径错误 ", err)
+		return errors.New(fmt.Sprintf("路径错误: %s", err))
 	}
 	//先创建最外层文件夹
 	sftpClient.Mkdir(remotePath)
@@ -65,34 +63,57 @@ func uploadDirectory(sftpClient *sftp.Client, localPath string, remotePath strin
 		//判断是否是文件,是文件直接上传.是文件夹,先远程创建文件夹,再递归复制内部文件
 		if backupDir.IsDir() {
 			if err := sftpClient.Mkdir(remoteFilePath); err != nil {
-				log.Fatal("makeDir failed", err)
+				return errors.New(fmt.Sprintf("makeDir failed: %s", err))
 			}
-			uploadDirectory(sftpClient, localFilePath, remoteFilePath)
+			if err := uploadDirectory(sftpClient, localFilePath, remoteFilePath); err != nil {
+				return err
+			}
 		} else {
-			uploadFile(sftpClient, path.Join(localPath, backupDir.Name()), remotePath)
+			return uploadFile(sftpClient, path.Join(localPath, backupDir.Name()), remotePath)
 		}
 	}
 
-	fmt.Println(localPath + "  copy directory to remote server finished!")
+	return nil
+}
+func downloadDirectory(sftpClient *sftp.Client, localPath, remotePath string) error {
+	remoteFiles, err := sftpClient.ReadDir(remotePath)
+	if err != nil {
+		return errors.New(fmt.Sprintf("远端路径错误: %s", err))
+	}
+	//先创建最外层文件夹
+	os.Mkdir(localPath, 0755)
+	//遍历文件夹内容
+	for _, getBackDir := range remoteFiles {
+		localFilePath := path.Join(localPath, getBackDir.Name())
+		remoteFilePath := path.Join(remotePath, getBackDir.Name())
+		//判断是否是文件,是文件直接上传.是文件夹,先远程创建文件夹,再递归复制内部文件
+		if getBackDir.IsDir() {
+			if err := os.Mkdir(localFilePath, 0755); err != nil {
+				return errors.New(fmt.Sprintf("makeDir failed: %s", err))
+			}
+			return downloadDirectory(sftpClient, localFilePath, remoteFilePath)
+		} else {
+			return downloadFile(sftpClient, path.Join(localPath, getBackDir.Name()), remotePath)
+		}
+	}
+	return nil
 }
 
-func uploadFile(sftpClient *sftp.Client, localFilePath string, remotePath string) {
+func uploadFile(sftpClient *sftp.Client, localFilePath string, remotePath string) error {
 	//打开本地文件流
 	srcFile, err := os.Open(localFilePath)
 	if err != nil {
-		fmt.Println("os.Open error : ", localFilePath)
-		log.Fatal(err)
+		return errors.New(fmt.Sprintf("os.Open error: %s ", localFilePath))
 
 	}
 	//关闭文件流
 	defer srcFile.Close()
 	//上传到远端服务器的文件名,与本地路径末尾相同
-	var remoteFileName = path.Base(localFilePath)
+	var remoteFileName = localFilePath[strings.LastIndex(localFilePath, "\\")+1:]
 	//打开远程文件,如果不存在就创建一个
 	dstFile, err := sftpClient.Create(path.Join(remotePath, remoteFileName))
 	if err != nil {
-		fmt.Println("sftpClient.Create error : ", path.Join(remotePath, remoteFileName))
-		log.Fatal(err)
+		return errors.New(fmt.Sprintf("sftpClient.Create error : %s", path.Join(remotePath, remoteFileName)))
 
 	}
 	//关闭远程文件
@@ -100,15 +121,33 @@ func uploadFile(sftpClient *sftp.Client, localFilePath string, remotePath string
 	//读取本地文件,写入到远程文件中(这里没有分快穿,自己写的话可以改一下,防止内存溢出)
 	ff, err := ioutil.ReadAll(srcFile)
 	if err != nil {
-		fmt.Println("ReadAll error : ", localFilePath)
-		log.Fatal(err)
+		return errors.New(fmt.Sprintf("ReadAll error: %s", localFilePath))
 
 	}
 	dstFile.Write(ff)
-	fmt.Println(localFilePath + "  copy file to remote server finished!")
+	return nil
 }
 
-func Upload(localPath string, remotePath string) error {
+func downloadFile(sftpClient *sftp.Client, localPath, remotePath string) error {
+	remoteFile, err := sftpClient.Open(remotePath)
+	if err != nil {
+		return errors.New(fmt.Sprintf("remote open error: %s ", remotePath))
+	}
+	defer remoteFile.Close()
+
+	var localFileName = remotePath[strings.LastIndex(remotePath, "/")+1:]
+	localFile, err := os.Create(path.Join(localPath, localFileName))
+	if err != nil {
+		return errors.New(fmt.Sprintf("local Create file error : %s", path.Join(localPath, localFileName)))
+	}
+	defer localFile.Close()
+	if _, err := remoteFile.WriteTo(localFile); err != nil {
+		return err
+	}
+	return nil
+}
+
+func Upload(localPath, remotePath string) error {
 	sftpClient, err := connect(user, passwd, hostAddr)
 	if err != nil {
 		return errors.New("ssh连接远程服务器失败")
@@ -120,10 +159,29 @@ func Upload(localPath string, remotePath string) error {
 	}
 	//判断是否是文件夹
 	if s.IsDir() {
-		uploadDirectory(sftpClient, localPath, remotePath)
+		return uploadDirectory(sftpClient, localPath, remotePath)
 	} else {
-		uploadFile(sftpClient, localPath, remotePath)
+		return uploadFile(sftpClient, localPath, remotePath)
 	}
 
+	return nil
+}
+
+func Download(localPath, remotePath string) error {
+	sftpClient, err := connect(user, passwd, hostAddr)
+	if err != nil {
+		return errors.New("ssh连接远程服务器失败")
+	}
+
+	s, err := sftpClient.Stat(remotePath)
+	if err != nil {
+		errors.New("远程文件不存在")
+	}
+
+	if s.IsDir() {
+		return downloadDirectory(sftpClient, localPath, remotePath)
+	} else {
+		return downloadFile(sftpClient, localPath, remotePath)
+	}
 	return nil
 }

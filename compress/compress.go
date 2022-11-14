@@ -1,149 +1,137 @@
 package compress
 
 import (
-	"archive/tar"
-	"errors"
+	"archive/zip"
+	"fmt"
 	"io"
-	"io/ioutil"
+	"log"
 	"os"
-	"path"
 	"path/filepath"
+	"strings"
 )
 
-/**
-failExist 为false 代表可以覆盖已有文件
-*/
-func Tar2(src string, dstTar string, failIfExist bool) (err error) {
-	// 清理路径字符串
-	src = path.Clean(src)
-
-	// 判断要打包的文件或目录是否存在
-	_, err = os.Open(src)
-	if err != nil {
-		return errors.New("要打包的文件或目录不存在：" + src)
-	}
-
-	// 判断目标文件是否存在
-	_, err = os.Open(dstTar)
-	if err == nil {
-		if failIfExist { // 不覆盖已存在的文件
-			return errors.New("目标文件已经存在：" + dstTar)
-		} else { // 覆盖已存在的文件
-			if er := os.Remove(dstTar); er != nil {
-				return er
-			}
-		}
-	}
-
-	// 创建空的目标文件
-	fw, er := os.Create(dstTar)
-	if er != nil {
-		return er
-	}
+func Zip(src, dest string) (err error) {
+	// 创建准备写入的文件
+	fw, err := os.Create(dest)
 	defer fw.Close()
+	if err != nil {
+		return err
+	}
 
-	// 创建 tar.Writer，执行打包操作
-	tw := tar.NewWriter(fw)
+	// 通过 fw 来创建 zip.Write
+	zw := zip.NewWriter(fw)
 	defer func() {
-		// 这里要判断 tw 是否关闭成功，如果关闭失败，则 .tar 文件可能不完整
-		if er := tw.Close(); er != nil {
-			err = er
+		// 检测一下是否成功关闭
+		if err := zw.Close(); err != nil {
+			log.Fatalln(err)
 		}
 	}()
 
-	// 获取文件或目录信息
-	fi, er := os.Stat(src)
-	if er != nil {
-		return er
-	}
+	// 下面来将文件写入 zw ，因为有可能会有很多个目录及文件，所以递归处理
+	return filepath.Walk(src, func(path string, fi os.FileInfo, errBack error) (err error) {
+		if errBack != nil {
+			return errBack
+		}
 
-	// 获取要打包的文件或目录的所在位置和名称
-	// srcBase, srcRelative := path.Split(filepath.Clean(src))
+		// 通过文件信息，创建 zip 的文件信息
+		fh, err := zip.FileInfoHeader(fi)
+		if err != nil {
+			return
+		}
 
-	srcBase := filepath.Dir(filepath.Clean(src))
-	srcRelative := filepath.Base(filepath.Clean(src))
+		// 替换文件信息中的文件名
+		fh.Name = strings.TrimPrefix(fi.Name()+string(filepath.Separator), path)
 
-	// 开始打包
-	if fi.IsDir() {
-		tarDir2(srcBase, srcRelative, tw, fi)
-	} else {
-		tarFile2(srcBase, srcRelative, tw, fi)
-	}
-
-	return nil
-}
-
-// 因为要执行遍历操作，所以要单独创建一个函数
-func tarDir2(srcBase, srcRelative string, tw *tar.Writer, fi os.FileInfo) (err error) {
-	// 获取完整路径
-	srcFull := srcBase + srcRelative
-
-	// 在结尾添加 "/"
-	last := len(srcRelative) - 1
-	if srcRelative[last] != os.PathSeparator {
-		srcRelative += string(os.PathSeparator)
-	}
-
-	// 获取 srcFull 下的文件或子目录列表
-	fis, er := ioutil.ReadDir(srcFull)
-	if er != nil {
-		return er
-	}
-
-	// 开始遍历
-	for _, fi := range fis {
+		// 这步开始没有加，会发现解压的时候说它不是个目录
 		if fi.IsDir() {
-			tarDir2(srcBase, srcRelative+fi.Name(), tw, fi)
-		} else {
-			tarFile2(srcBase, srcRelative+fi.Name(), tw, fi)
+			fh.Name += "/"
 		}
-	}
 
-	// 写入目录信息
-	if len(srcRelative) > 0 {
-		hdr, er := tar.FileInfoHeader(fi, "")
-		if er != nil {
-			return er
+		// 写入文件信息，并返回一个 Write 结构
+		w, err := zw.CreateHeader(fh)
+		if err != nil {
+			return
 		}
-		hdr.Name = srcRelative
 
-		hdr.Format = tar.FormatGNU
-
-		if er = tw.WriteHeader(hdr); er != nil {
-			return er
+		// 检测，如果不是标准文件就只写入头信息，不写入文件数据到 w
+		// 如目录，也没有数据需要写
+		if !fh.Mode().IsRegular() {
+			return nil
 		}
-	}
 
-	return nil
+		// 打开要压缩的文件
+		fr, err := os.Open(path)
+		defer fr.Close()
+		if err != nil {
+			return
+		}
+
+		// 将打开的文件 Copy 到 w
+		n, err := io.Copy(w, fr)
+		if err != nil {
+			return
+		}
+		// 输出压缩的内容
+		fmt.Printf("成功压缩文件： %s, 共写入了 %d 个字符的数据\n", path, n)
+
+		return nil
+	})
 }
 
-// 因为要在 defer 中关闭文件，所以要单独创建一个函数
-func tarFile2(srcBase, srcRelative string, tw *tar.Writer, fi os.FileInfo) (err error) {
-	// 获取完整路径
-	srcFull := srcBase + srcRelative
-
-	// 写入文件信息
-	hdr, er := tar.FileInfoHeader(fi, "")
-	if er != nil {
-		return er
-	}
-	hdr.Name = srcRelative
-	hdr.Format = tar.FormatGNU
-
-	if er = tw.WriteHeader(hdr); er != nil {
-		return er
+func UnZip(src, dest string) (err error) {
+	// 打开压缩文件，这个 zip 包有个方便的 ReadCloser 类型
+	// 这个里面有个方便的 OpenReader 函数，可以比 tar 的时候省去一个打开文件的步骤
+	zr, err := zip.OpenReader(src)
+	defer zr.Close()
+	if err != nil {
+		return
 	}
 
-	// 打开要打包的文件，准备读取
-	fr, er := os.Open(srcFull)
-	if er != nil {
-		return er
+	// 如果解压后不是放在当前目录就按照保存目录去创建目录
+	if dest != "" {
+		if err := os.MkdirAll(dest, 0755); err != nil {
+			return err
+		}
 	}
-	defer fr.Close()
 
-	// 将文件数据写入 tw 中
-	if _, er = io.Copy(tw, fr); er != nil {
-		return er
+	// 遍历 zr ，将文件写入到磁盘
+	for _, file := range zr.File {
+		path := filepath.Join(dest, file.Name)
+
+		// 如果是目录，就创建目录
+		if file.FileInfo().IsDir() {
+			if err := os.MkdirAll(path, file.Mode()); err != nil {
+				return err
+			}
+			// 因为是目录，跳过当前循环，因为后面都是文件的处理
+			continue
+		}
+
+		// 获取到 Reader
+		fr, err := file.Open()
+		if err != nil {
+			return err
+		}
+
+		// 创建要写出的文件对应的 Write
+		fw, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_TRUNC, file.Mode())
+		if err != nil {
+			return err
+		}
+
+		n, err := io.Copy(fw, fr)
+		if err != nil {
+			return err
+		}
+
+		// 将解压的结果输出
+		fmt.Printf("成功解压 %s ，共写入了 %d 个字符的数据\n", path, n)
+
+		// 因为是在循环中，无法使用 defer ，直接放在最后
+		// 不过这样也有问题，当出现 err 的时候就不会执行这个了，
+		// 可以把它单独放在一个函数中，这里是个实验，就这样了
+		fw.Close()
+		fr.Close()
 	}
 	return nil
 }

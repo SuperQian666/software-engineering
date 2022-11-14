@@ -11,7 +11,7 @@ import (
 }*/
 
 func TestCopy(t *testing.T) {
-	if err := Copy("../oldDir", "../newDir"); err != nil {
+	if err := Copy("11", "11"); err != nil {
 		t.Error(err)
 	}
 }
