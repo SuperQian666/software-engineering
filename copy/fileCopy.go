@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func FileCopy(src, dest, file string) error {
+func fileCopy(src, dest, file string) error {
 	input, err := ioutil.ReadFile(src)
 	if err != nil {
 		fmt.Println(err)
@@ -39,26 +39,42 @@ func FileCopy(src, dest, file string) error {
 	return nil
 }
 
-func Copy(src, dest string) error {
-	files, _ := ioutil.ReadDir(src)
+func dirCopy(src, dest string) error {
+	files, err := ioutil.ReadDir(src)
+	if err != nil {
+		fmt.Println(err)
+	}
 	pathSeparator := "/"
 	for _, file := range files {
 		if file.IsDir() {
-			if err := Copy(src+pathSeparator+file.Name(), dest+pathSeparator+file.Name()); err != nil {
+			if err := dirCopy(src+pathSeparator+file.Name(), dest+pathSeparator+file.Name()); err != nil {
 				return err
 			}
 		} else {
 			oldPath := fmt.Sprintf("%s%s%s", src, pathSeparator, file.Name())
 			newPath := fmt.Sprintf("%s%s%s", dest, pathSeparator, file.Name())
-			if err := FileCopy(oldPath, newPath, file.Name()); err != nil {
+			if err := fileCopy(oldPath, newPath, file.Name()); err != nil {
 				return err
 			}
 		}
 	}
-	_, err := os.Lstat(dest)
+	_, err = os.Lstat(dest)
 	if err != nil {
 		os.MkdirAll(dest, 0777)
 	}
 
 	return nil
+}
+
+func Copy(src, dest string) error {
+	fi, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if fi.IsDir() {
+		return dirCopy(src, dest)
+	} else {
+		newPath := fmt.Sprintf("%s%s%s", dest, "/", fi.Name())
+		return fileCopy(src, newPath, fi.Name())
+	}
 }

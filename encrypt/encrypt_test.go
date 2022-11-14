@@ -43,3 +43,12 @@ func TestFunction(t *testing.T) {
 	fmt.Printf("%v\n", name)
 	fmt.Printf("%v\n", size)
 }
+
+func TestEncryptFile(t *testing.T) {
+	EncryptFile("../src.txt", "../test", "12345")
+
+}
+
+func TestDecryptFile(t *testing.T) {
+	DecryptFile("../test", "../testDecrypt", "12345")
+}
