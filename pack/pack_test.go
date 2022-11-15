@@ -14,8 +14,8 @@ func TestPack(t *testing.T) {
 }
 
 func TestUnPack(t *testing.T) {
-	filePath := "../testSpace/testPackDir/t"
-	dest := "../testSpace/testPackDir/res"
+	filePath := "C:\\Users\\Whisper\\GolandProjects\\software-engineering\\testSpace\\testPackDir\\1"
+	dest := "C:\\Users\\Whisper\\GolandProjects\\software-engineering\\testSpace\\testPackDir"
 	if err := UnTar(filePath, dest); err != nil {
 		log.Fatal(err)
 	}

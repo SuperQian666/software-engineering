@@ -202,18 +202,11 @@ func (mw *MyMainWindow) inFile() {
 	dlg.Title = "选择文件"
 	dlg.Filter = "所有文件 (*.*)|*.*|图片(*.gif;*.jpg;*.jpeg;*.bmp;*.png)|*.gif;*.jpg;*.jpeg;*.bmp;*.png;|word文件(*.doc)|*.doc|excel文件(*.xls)|*.xls|文本文件 (*.txt)|*.txt"
 	mw.inTE.SetText("") //通过重定向变量设置TextEdit的Text
-	if ok, err := dlg.ShowOpenMultiple(mw); err != nil {
-		//mw.edit.AppendText("错误 : 打开文件时\r\n")
-		//return
-	} else if !ok {
-		//mw.edit.AppendText("用户取消\r\n")
-		//return
-	}
+	dlg.ShowOpenMultiple(mw)
 	var s string
 	for _, f := range dlg.FilePaths {
 		s += f + ";"
 	}
-	//mw.edit.AppendText(fmt.Sprintf("选择了: %s\r\n", s))
 	s1 := fmt.Sprintf("%s", s)
 	mw.inTE.AppendText(s1)
 }
@@ -241,17 +234,10 @@ func (mw *MyMainWindow) outFile() {
 
 	dlg := new(walk.FileDialog)
 	dlg.Title = "选择文件"
-	dlg.Filter = "文件夹(*)|所有文件 (*.*)|*.*|图片(*.gif;*.jpg;*.jpeg;*.bmp;*.png)|*.gif;*.jpg;*.jpeg;*.bmp;*.png;|word文件(*.doc)|*.doc|excel文件(*.xls)|*.xls|文本文件 (*.txt)|*.txt"
+	dlg.Filter = "所有文件 (*.*)|*.*|图片(*.gif;*.jpg;*.jpeg;*.bmp;*.png)|*.gif;*.jpg;*.jpeg;*.bmp;*.png;|word文件(*.doc)|*.doc|excel文件(*.xls)|*.xls|文本文件 (*.txt)|*.txt"
 
 	mw.outTE.SetText("")
-	if ok, err := dlg.ShowOpen(mw); err != nil {
-		//mw.edit.AppendText("错误 : 打开文件时\r\n")
-		return
-	} else if !ok {
-		//mw.edit.AppendText("用户取消\r\n")
-		return
-	}
-
+	dlg.ShowOpen(mw)
 	s1 := fmt.Sprintf("%s", dlg.FilePath)
 	mw.outTE.AppendText(s1)
 }
@@ -280,10 +266,13 @@ func (mw *MyMainWindow) fileEncrypt() {
 		mw.showNoneMessage("密码至少为5位")
 		return
 	}
-	if err := encrypt.EncryptFile(mw.inTE.Text(), mw.outTE.Text(), mw.secretKey.Text()); err != nil {
+
+	in, out := getCorrectPath(mw.inTE.Text()), getCorrectPath(mw.outTE.Text())
+
+	if err := encrypt.EncryptFile(in, out, mw.secretKey.Text()); err != nil {
 		mw.showNoneMessage(fmt.Sprintf("%s:加密失败：%s\r\n", mw.inTE.Text(), err))
 	} else {
-		mw.showNoneMessage(mw.inTE.Text() + ":" + "加密成功")
+		mw.showNoneMessage(mw.inTE.Text() + " :" + "加密成功")
 	}
 }
 
@@ -293,10 +282,15 @@ func (mw *MyMainWindow) fileDecrypt() {
 		mw.showNoneMessage("密码至少为5位")
 		return
 	}
-	if err := encrypt.DecryptFile(mw.inTE.Text(), mw.outTE.Text(), mw.secretKey.Text()); err != nil {
+	in, out := getCorrectPath(mw.inTE.Text()), getCorrectPath(mw.outTE.Text())
+	if err := encrypt.DecryptFile(in, out, mw.secretKey.Text()); err != nil {
 		mw.showNoneMessage(fmt.Sprintf("%s:解密失败：%s\r\n", mw.inTE.Text(), err))
 	} else {
-		mw.showNoneMessage(mw.inTE.Text() + ":" + "解密成功")
+		if fi, _ := os.Stat(out); fi.Size() == 0 {
+			mw.showNoneMessage("密码错误，解压文件无效")
+		} else {
+			mw.showNoneMessage(mw.inTE.Text() + ":" + "解密成功")
+		}
 	}
 
 }
@@ -341,7 +335,8 @@ func (mw *MyMainWindow) fileRestore() {
 func (mw *MyMainWindow) fileCompress() {
 
 	var msg = ""
-	if err := compress.Zip(mw.inTE.Text(), mw.outTE.Text()); err != nil {
+	in, out := getCorrectPath(mw.inTE.Text()), getCorrectPath(mw.outTE.Text())
+	if err := compress.Zip(in, out); err != nil {
 		msg += fmt.Sprintf("%s:压缩失败：%s\r\n", mw.inTE.Text(), err)
 
 	} else {
@@ -353,7 +348,8 @@ func (mw *MyMainWindow) fileCompress() {
 // 解压
 func (mw *MyMainWindow) fileDecompress() {
 	var msg = ""
-	if err := compress.UnZip(mw.inTE.Text(), mw.outTE.Text()); err != nil {
+	in, out := getCorrectPath(mw.inTE.Text()), getCorrectPath(mw.outTE.Text())
+	if err := compress.UnZip(in, out); err != nil {
 		msg += fmt.Sprintf("%s:解压失败：%s\r\n", mw.inTE.Text(), err)
 
 	} else {
@@ -365,7 +361,8 @@ func (mw *MyMainWindow) fileDecompress() {
 // 云备份
 func (mw *MyMainWindow) fileCopyToCloud() {
 	var msg = ""
-	if err := network.Upload(mw.inTE.Text(), mw.outTE.Text()); err != nil {
+	in, out := getCorrectPath(mw.inTE.Text()), getCorrectPath(mw.outTE.Text())
+	if err := network.Upload(in, out); err != nil {
 		msg += fmt.Sprintf("%s:云备份失败：%s\r\n", mw.inTE.Text(), err)
 	} else {
 		msg += fmt.Sprintf("%s:云备份成功\r\n", mw.inTE.Text())
@@ -376,7 +373,8 @@ func (mw *MyMainWindow) fileCopyToCloud() {
 // 云取回
 func (mw *MyMainWindow) fileRestoreFromCloud() {
 	var msg = ""
-	if err := network.Download(mw.inTE.Text(), mw.outTE.Text()); err != nil {
+	in, out := getCorrectPath(mw.inTE.Text()), getCorrectPath(mw.outTE.Text())
+	if err := network.Download(in, out); err != nil {
 		msg += fmt.Sprintf("%s:云取回失败：%s\r\n", mw.inTE.Text(), err)
 	} else {
 		msg += fmt.Sprintf("%s:云取回成功\r\n", mw.inTE.Text())
@@ -386,7 +384,8 @@ func (mw *MyMainWindow) fileRestoreFromCloud() {
 
 func (mw *MyMainWindow) pack() {
 	var msg = ""
-	if err := pack.Tar(mw.inTE.Text(), mw.outTE.Text()); err != nil {
+	in, out := getCorrectPath(mw.inTE.Text()), getCorrectPath(mw.outTE.Text())
+	if err := pack.Tar(in, out); err != nil {
 		msg += fmt.Sprintf("%s:打包失败：%s\r\n", mw.inTE.Text(), err)
 	} else {
 		msg += fmt.Sprintf("%s:打包成功\r\n", mw.inTE.Text())
@@ -396,7 +395,8 @@ func (mw *MyMainWindow) pack() {
 
 func (mw *MyMainWindow) unpack() {
 	var msg = ""
-	if err := pack.UnTar(mw.inTE.Text(), mw.outTE.Text()); err != nil {
+	in, out := getCorrectPath(mw.inTE.Text()), getCorrectPath(mw.outTE.Text())
+	if err := pack.UnTar(in, out); err != nil {
 		msg += fmt.Sprintf("%s:解包失败：%s\r\n", mw.inTE.Text(), err)
 	} else {
 		msg += fmt.Sprintf("%s:解包成功\r\n", mw.inTE.Text())
@@ -407,4 +407,12 @@ func (mw *MyMainWindow) unpack() {
 // 提示框
 func (mw *MyMainWindow) showNoneMessage(message string) {
 	walk.MsgBox(mw, "提示", message, walk.MsgBoxIconInformation)
+}
+
+func getCorrectPath(src string) string {
+	spRes := strings.Split(src, ";")
+	if len(spRes) == 0 {
+		return ""
+	}
+	return spRes[0]
 }
