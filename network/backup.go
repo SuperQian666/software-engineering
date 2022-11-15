@@ -55,7 +55,7 @@ func uploadDirectory(sftpClient *sftp.Client, localPath string, remotePath strin
 		return errors.New(fmt.Sprintf("路径错误: %s", err))
 	}
 	//先创建最外层文件夹
-	sftpClient.Mkdir(remotePath)
+	sftpClient.MkdirAll(remotePath)
 	//遍历文件夹内容
 	for _, backupDir := range localFiles {
 		localFilePath := path.Join(localPath, backupDir.Name())
@@ -157,17 +157,18 @@ func Upload(localPath, remotePath string) error {
 	if err != nil {
 		return errors.New("文件路径不存在")
 	}
+	sftpClient.MkdirAll(path.Join(BaseUploadPath, remotePath))
 	//判断是否是文件夹
 	if s.IsDir() {
-		return uploadDirectory(sftpClient, localPath, remotePath)
+		return uploadDirectory(sftpClient, localPath, path.Join(BaseUploadPath, remotePath))
 	} else {
-		return uploadFile(sftpClient, localPath, remotePath)
+		return uploadFile(sftpClient, localPath, path.Join(BaseUploadPath, remotePath))
 	}
 
 	return nil
 }
 
-func Download(localPath, remotePath string) error {
+func Download(remotePath, localPath string) error {
 	sftpClient, err := connect(user, passwd, hostAddr)
 	if err != nil {
 		return errors.New("ssh连接远程服务器失败")
@@ -177,6 +178,8 @@ func Download(localPath, remotePath string) error {
 	if err != nil {
 		return errors.New("远程文件不存在")
 	}
+
+	os.Mkdir(localPath, 0755)
 
 	if s.IsDir() {
 		return downloadDirectory(sftpClient, localPath, remotePath)
