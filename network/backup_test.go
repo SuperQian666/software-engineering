@@ -9,5 +9,5 @@ func TestConnect(t *testing.T) {
 }
 
 func TestDownload(t *testing.T) {
-	Download("C:\\Users\\Whisper\\GolandProjects\\software-engineering\\testSpace\\")
+	Download("C:\\Users\\Whisper\\GolandProjects\\software-engineering\\testSpace\\", "/var/file/")
 }

@@ -9,6 +9,7 @@ import (
 	"soft/copy"
 	"soft/encrypt"
 	"soft/network"
+	"soft/pack"
 	"strings"
 )
 
@@ -30,7 +31,6 @@ func main() {
 		//Icon:     "./frontcode/test.ico", //窗体图标
 		Title:   "文件备份", //标题
 		MinSize: Size{Width: 450, Height: 600},
-		//Size:     Size{600, 400},
 		MenuItems: []MenuItem{
 			Menu{
 				Text: "文件",
@@ -82,6 +82,14 @@ func main() {
 				Layout: HBox{},
 				Children: []Widget{
 					PushButton{
+						Text:      "备份",
+						OnClicked: mw.fileCopy, //点击事件响应函数
+					},
+					PushButton{
+						Text:      "还原",
+						OnClicked: mw.fileRestore, //点击事件响应函数
+					},
+					PushButton{
 						Text:      "加密",
 						OnClicked: mw.fileEncrypt, //点击事件响应函数
 					},
@@ -90,12 +98,12 @@ func main() {
 						OnClicked: mw.fileDecrypt, //点击事件响应函数
 					},
 					PushButton{
-						Text:      "备份",
-						OnClicked: mw.fileCopy, //点击事件响应函数
+						Text:      "打包",
+						OnClicked: mw.pack,
 					},
 					PushButton{
-						Text:      "还原",
-						OnClicked: mw.fileRestore, //点击事件响应函数
+						Text:      "解包",
+						OnClicked: mw.unpack,
 					},
 				},
 			},
@@ -195,17 +203,17 @@ func (mw *MyMainWindow) inFile() {
 	dlg.Filter = "所有文件 (*.*)|*.*|图片(*.gif;*.jpg;*.jpeg;*.bmp;*.png)|*.gif;*.jpg;*.jpeg;*.bmp;*.png;|word文件(*.doc)|*.doc|excel文件(*.xls)|*.xls|文本文件 (*.txt)|*.txt"
 	mw.inTE.SetText("") //通过重定向变量设置TextEdit的Text
 	if ok, err := dlg.ShowOpenMultiple(mw); err != nil {
-		mw.edit.AppendText("错误 : 打开文件时\r\n")
-		return
+		//mw.edit.AppendText("错误 : 打开文件时\r\n")
+		//return
 	} else if !ok {
-		mw.edit.AppendText("用户取消\r\n")
-		return
+		//mw.edit.AppendText("用户取消\r\n")
+		//return
 	}
 	var s string
 	for _, f := range dlg.FilePaths {
 		s += f + ";"
 	}
-	mw.edit.AppendText(fmt.Sprintf("选择了: %s\r\n", s))
+	//mw.edit.AppendText(fmt.Sprintf("选择了: %s\r\n", s))
 	s1 := fmt.Sprintf("%s", s)
 	mw.inTE.AppendText(s1)
 }
@@ -217,14 +225,13 @@ func (mw *MyMainWindow) inFolder() {
 
 	mw.inTE.SetText("") //通过重定向变量设置TextEdit的Text
 	if ok, err := dlg.ShowBrowseFolder(mw); err != nil {
-		mw.edit.AppendText("错误 : 打开文件时\r\n")
+		//mw.edit.AppendText("错误 : 打开文件时\r\n")
 		return
 	} else if !ok {
-		mw.edit.AppendText("用户取消\r\n")
+		//mw.edit.AppendText("用户取消\r\n")
 		return
 	}
-	s := fmt.Sprintf("选择了: %s\r\n", dlg.FilePath)
-	mw.edit.AppendText(s)
+
 	s1 := fmt.Sprintf("%s", dlg.FilePath)
 	mw.inTE.AppendText(s1)
 }
@@ -238,14 +245,13 @@ func (mw *MyMainWindow) outFile() {
 
 	mw.outTE.SetText("")
 	if ok, err := dlg.ShowOpen(mw); err != nil {
-		mw.edit.AppendText("错误 : 打开文件时\r\n")
+		//mw.edit.AppendText("错误 : 打开文件时\r\n")
 		return
 	} else if !ok {
-		mw.edit.AppendText("用户取消\r\n")
+		//mw.edit.AppendText("用户取消\r\n")
 		return
 	}
-	s := fmt.Sprintf("选择了: %s\r\n", dlg.FilePath)
-	mw.edit.AppendText(s)
+
 	s1 := fmt.Sprintf("%s", dlg.FilePath)
 	mw.outTE.AppendText(s1)
 }
@@ -257,14 +263,13 @@ func (mw *MyMainWindow) outFolder() {
 
 	mw.outTE.SetText("")
 	if ok, err := dlg.ShowBrowseFolder(mw); err != nil {
-		mw.edit.AppendText("错误 : 打开文件时\r\n")
+		//mw.edit.AppendText("错误 : 打开文件时\r\n")
 		return
 	} else if !ok {
-		mw.edit.AppendText("用户取消\r\n")
+		//mw.edit.AppendText("用户取消\r\n")
 		return
 	}
-	s := fmt.Sprintf("选择了: %s\r\n", dlg.FilePath)
-	mw.edit.AppendText(s)
+
 	s1 := fmt.Sprintf("%s", dlg.FilePath)
 	mw.outTE.AppendText(s1)
 }
@@ -301,6 +306,9 @@ func (mw *MyMainWindow) fileCopy() {
 	addArr := strings.Split(mw.inTE.Text(), ";")
 	msg := ""
 	for _, i := range addArr {
+		if i == "" {
+			continue
+		}
 		if err := copy.Copy(i, mw.outTE.Text()); err != nil {
 			msg += fmt.Sprintf("%s:备份失败：%s\r\n", i, err)
 
@@ -316,6 +324,9 @@ func (mw *MyMainWindow) fileRestore() {
 	addArr := strings.Split(mw.inTE.Text(), ";")
 	msg := ""
 	for _, i := range addArr {
+		if i == "" {
+			continue
+		}
 		if err := copy.Copy(i, mw.outTE.Text()); err != nil {
 			msg += fmt.Sprintf("%s:还原失败：%s\r\n", i, err)
 
@@ -369,6 +380,26 @@ func (mw *MyMainWindow) fileRestoreFromCloud() {
 		msg += fmt.Sprintf("%s:云取回失败：%s\r\n", mw.inTE.Text(), err)
 	} else {
 		msg += fmt.Sprintf("%s:云取回成功\r\n", mw.inTE.Text())
+	}
+	mw.showNoneMessage(msg)
+}
+
+func (mw *MyMainWindow) pack() {
+	var msg = ""
+	if err := pack.Tar(mw.inTE.Text(), mw.outTE.Text()); err != nil {
+		msg += fmt.Sprintf("%s:打包失败：%s\r\n", mw.inTE.Text(), err)
+	} else {
+		msg += fmt.Sprintf("%s:打包成功\r\n", mw.inTE.Text())
+	}
+	mw.showNoneMessage(msg)
+}
+
+func (mw *MyMainWindow) unpack() {
+	var msg = ""
+	if err := pack.UnTar(mw.inTE.Text(), mw.outTE.Text()); err != nil {
+		msg += fmt.Sprintf("%s:解包失败：%s\r\n", mw.inTE.Text(), err)
+	} else {
+		msg += fmt.Sprintf("%s:解包成功\r\n", mw.inTE.Text())
 	}
 	mw.showNoneMessage(msg)
 }
