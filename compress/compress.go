@@ -41,6 +41,7 @@ func Zip(src, dest string) (err error) {
 
 		// 替换文件信息中的文件名
 		fh.Name = strings.TrimPrefix(fi.Name()+string(filepath.Separator), path)
+		fh.Method = zip.Deflate
 
 		// 这步开始没有加，会发现解压的时候说它不是个目录
 		if fi.IsDir() {
