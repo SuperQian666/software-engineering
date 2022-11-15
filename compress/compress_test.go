@@ -9,7 +9,7 @@ func TestCompress(t *testing.T) {
 }
 
 func TestUnCompress(t *testing.T) {
-	if err := UnZip("C:\\Users\\Whisper\\GolandProjects\\software-engineering\\testSpace\\testCompress\\compress\\copy.zip", "C:\\Users\\Whisper\\GolandProjects\\software-engineering\\testSpace\\testCompress\\uncompress\\res"); err != nil {
+	if err := UnZip("", ""); err != nil {
 		t.Fatal(err)
 	}
 }

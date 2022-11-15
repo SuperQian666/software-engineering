@@ -82,11 +82,11 @@ func UnZip(src, dest string) (err error) {
 	// 打开压缩文件，这个 zip 包有个方便的 ReadCloser 类型
 	// 这个里面有个方便的 OpenReader 函数，可以比 tar 的时候省去一个打开文件的步骤
 	zr, err := zip.OpenReader(src)
-	defer zr.Close()
-	if err != nil {
-		return
-	}
 
+	if err != nil {
+		return err
+	}
+	defer zr.Close()
 	// 如果解压后不是放在当前目录就按照保存目录去创建目录
 	if dest != "" {
 		if err := os.MkdirAll(dest, 0755); err != nil {

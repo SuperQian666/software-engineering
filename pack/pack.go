@@ -1,147 +1,135 @@
-package compress
+package pack
 
 import (
 	"archive/tar"
-	"errors"
+	"fmt"
 	"io"
-	"io/ioutil"
+	"log"
 	"os"
-	"path"
 	"path/filepath"
+	"strings"
 )
 
-// Tar2 failExist 为false 代表可以覆盖已有文件
-func Tar2(src string, dstTar string, failIfExist bool) (err error) {
-	// 清理路径字符串
-	src = path.Clean(src)
-
-	// 判断要打包的文件或目录是否存在
-	_, err = os.Open(src)
+//Tar 打包
+func Tar(src, dst string) (err error) {
+	// 创建文件
+	fw, err := os.Create(dst)
 	if err != nil {
-		return errors.New("要打包的文件或目录不存在：" + src)
-	}
-
-	// 判断目标文件是否存在
-	_, err = os.Open(dstTar)
-	if err == nil {
-		if failIfExist { // 不覆盖已存在的文件
-			return errors.New("目标文件已经存在：" + dstTar)
-		} else { // 覆盖已存在的文件
-			if er := os.Remove(dstTar); er != nil {
-				return er
-			}
-		}
-	}
-
-	// 创建空的目标文件
-	fw, er := os.Create(dstTar)
-	if er != nil {
-		return er
+		return
 	}
 	defer fw.Close()
 
-	// 创建 tar.Writer，执行打包操作
+	// 创建 Tar.Writer 结构
 	tw := tar.NewWriter(fw)
-	defer func() {
-		// 这里要判断 tw 是否关闭成功，如果关闭失败，则 .tar 文件可能不完整
-		if er := tw.Close(); er != nil {
-			err = er
+	// 如果需要启用 gzip 将上面代码注释，换成下面的
+
+	defer tw.Close()
+
+	// 递归处理目录及目录下的所有文件和目录
+	return filepath.Walk(src, func(fileName string, fi os.FileInfo, err error) error {
+		// 这个闭包会返回个 error ，所以先要处理一下
+		if err != nil {
+			return err
 		}
-	}()
 
-	// 获取文件或目录信息
-	fi, er := os.Stat(src)
-	if er != nil {
-		return er
-	}
+		hdr, err := tar.FileInfoHeader(fi, "")
+		if err != nil {
+			return err
+		}
 
-	// 获取要打包的文件或目录的所在位置和名称
-	// srcBase, srcRelative := path.Split(filepath.Clean(src))
+		hdr.Name = fileName[strings.LastIndex(fileName, "\\")+1:]
 
-	srcBase := filepath.Dir(filepath.Clean(src))
-	srcRelative := filepath.Base(filepath.Clean(src))
+		// 写入文件信息
+		if err := tw.WriteHeader(hdr); err != nil {
+			return err
+		}
 
-	// 开始打包
-	if fi.IsDir() {
-		tarDir2(srcBase, srcRelative, tw, fi)
-	} else {
-		tarFile2(srcBase, srcRelative, tw, fi)
-	}
+		// 判断下文件是否是标准文件，如果不是就不处理了，
+		// 如： 目录，这里就只记录了文件信息，不会执行下面的 copy
+		if !fi.Mode().IsRegular() {
+			return nil
+		}
 
-	return nil
+		// 打开文件
+		fr, err := os.Open(fileName)
+		defer fr.Close()
+		if err != nil {
+			return err
+		}
+
+		// copy 文件数据到 tw
+		n, err := io.Copy(tw, fr)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("成功打包 %s ，共写入了 %d 字节的数据\n", fileName, n)
+
+		return nil
+	})
+
 }
 
-// 因为要执行遍历操作，所以要单独创建一个函数
-func tarDir2(srcBase, srcRelative string, tw *tar.Writer, fi os.FileInfo) (err error) {
-	// 获取完整路径
-	srcFull := srcBase + srcRelative
-
-	// 在结尾添加 "/"
-	last := len(srcRelative) - 1
-	if srcRelative[last] != os.PathSeparator {
-		srcRelative += string(os.PathSeparator)
-	}
-
-	// 获取 srcFull 下的文件或子目录列表
-	fis, er := ioutil.ReadDir(srcFull)
-	if er != nil {
-		return er
-	}
-
-	// 开始遍历
-	for _, fi := range fis {
-		if fi.IsDir() {
-			tarDir2(srcBase, srcRelative+fi.Name(), tw, fi)
-		} else {
-			tarFile2(srcBase, srcRelative+fi.Name(), tw, fi)
-		}
-	}
-
-	// 写入目录信息
-	if len(srcRelative) > 0 {
-		hdr, er := tar.FileInfoHeader(fi, "")
-		if er != nil {
-			return er
-		}
-		hdr.Name = srcRelative
-
-		hdr.Format = tar.FormatGNU
-
-		if er = tw.WriteHeader(hdr); er != nil {
-			return er
-		}
-	}
-
-	return nil
-}
-
-// 因为要在 defer 中关闭文件，所以要单独创建一个函数
-func tarFile2(srcBase, srcRelative string, tw *tar.Writer, fi os.FileInfo) (err error) {
-	// 获取完整路径
-	srcFull := srcBase + srcRelative
-
-	// 写入文件信息
-	hdr, er := tar.FileInfoHeader(fi, "")
-	if er != nil {
-		return er
-	}
-	hdr.Name = srcRelative
-	hdr.Format = tar.FormatGNU
-
-	if er = tw.WriteHeader(hdr); er != nil {
-		return er
-	}
-
-	// 打开要打包的文件，准备读取
-	fr, er := os.Open(srcFull)
-	if er != nil {
-		return er
+func UnTar(src, dst string) (err error) {
+	// 打开准备解压的 tar 包
+	fr, err := os.Open(src)
+	if err != nil {
+		return
 	}
 	defer fr.Close()
 
-	// 将文件数据写入 tw 中
-	if _, er = io.Copy(tw, fr); er != nil {
-		return er
+	tr := tar.NewReader(fr)
+
+	// 现在已经获得了 tar.Reader 结构了，只需要循环里面的数据写入文件就可以了
+	for {
+		hdr, err := tr.Next()
+
+		switch {
+		case err == io.EOF:
+			return nil
+		case err != nil:
+			return err
+		case hdr == nil:
+			continue
+		}
+
+		dstFileDir := filepath.Join(dst, hdr.Name)
+
+		// 根据 header 的 Typeflag 字段，判断文件的类型
+		switch hdr.Typeflag {
+		case tar.TypeDir:
+			// 判断下目录是否存在，不存在就创建
+			if b := ExistDir(dstFileDir); !b {
+				// 使用 MkdirAll 不使用 Mkdir ，就类似 Linux 终端下的 mkdir -p，
+				// 可以递归创建每一级目录
+				if err := os.MkdirAll(dstFileDir, 0775); err != nil {
+					return err
+				}
+			}
+		case tar.TypeReg:
+
+			file, err := os.OpenFile(dstFileDir, os.O_CREATE|os.O_RDWR, os.FileMode(hdr.Mode))
+			if err != nil {
+				return err
+			}
+			n, err := io.Copy(file, tr)
+			if err != nil {
+				return err
+			}
+			// 将解压结果输出显示
+			fmt.Printf("成功解压： %s , 共处理了 %d 个字符\n", dstFileDir, n)
+
+			// 不要忘记关闭打开的文件，因为它是在 for 循环中，不能使用 defer
+			// 如果想使用 defer 就放在一个单独的函数中
+			file.Close()
+		}
 	}
+
 	return nil
+}
+
+// 判断目录是否存在
+func ExistDir(dirname string) bool {
+	fi, err := os.Stat(dirname)
+	return (err == nil || os.IsExist(err)) && fi.IsDir()
 }

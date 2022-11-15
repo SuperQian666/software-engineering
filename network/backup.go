@@ -175,7 +175,7 @@ func Download(localPath, remotePath string) error {
 
 	s, err := sftpClient.Stat(remotePath)
 	if err != nil {
-		errors.New("远程文件不存在")
+		return errors.New("远程文件不存在")
 	}
 
 	if s.IsDir() {
