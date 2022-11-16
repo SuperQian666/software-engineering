@@ -93,7 +93,9 @@ func downloadDirectory(sftpClient *sftp.Client, localPath, remotePath string) er
 			if err := os.Mkdir(localFilePath, 0755); err != nil {
 				return errors.New(fmt.Sprintf("makeDir failed: %s", err))
 			}
-			return downloadDirectory(sftpClient, localFilePath, remoteFilePath)
+			if err = downloadDirectory(sftpClient, localFilePath, remoteFilePath); err != nil {
+				return err
+			}
 		} else {
 			if err = downloadFile(sftpClient, localPath, remoteFilePath); err != nil {
 				return err

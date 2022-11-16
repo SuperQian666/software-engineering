@@ -26,7 +26,7 @@ func Tar(src, dst string) (err error) {
 	defer tw.Close()
 
 	// 递归处理目录及目录下的所有文件和目录
-	return filepath.Walk(src, func(fileName string, fi os.FileInfo, err error) error {
+	return filepath.Walk(src, func(path string, fi os.FileInfo, err error) error {
 		// 这个闭包会返回个 error ，所以先要处理一下
 		if err != nil {
 			return err
@@ -37,7 +37,7 @@ func Tar(src, dst string) (err error) {
 			return err
 		}
 
-		hdr.Name = fileName[strings.LastIndex(fileName, "\\")+1:]
+		hdr.Name = strings.TrimPrefix(path, src)
 
 		// 写入文件信息
 		if err := tw.WriteHeader(hdr); err != nil {
@@ -51,7 +51,7 @@ func Tar(src, dst string) (err error) {
 		}
 
 		// 打开文件
-		fr, err := os.Open(fileName)
+		fr, err := os.Open(path)
 		defer fr.Close()
 		if err != nil {
 			return err
@@ -63,7 +63,7 @@ func Tar(src, dst string) (err error) {
 			return err
 		}
 
-		log.Printf("成功打包 %s ，共写入了 %d 字节的数据\n", fileName, n)
+		log.Printf("成功打包 %s ，共写入了 %d 字节的数据\n", path, n)
 
 		return nil
 	})
