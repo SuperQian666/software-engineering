@@ -12,5 +12,7 @@ func TestConnect(t *testing.T) {
 }
 
 func TestDownload(t *testing.T) {
-	Download("test.ico", "C:\\Users\\Whisper\\GolandProjects\\software-engineering\\testSpace\\testbackUp")
+	if err := Download("系统设计", "C:\\Users\\Whisper\\GolandProjects\\software-engineering\\testSpace\\testbackUp"); err != nil {
+		log.Fatal(err)
+	}
 }
