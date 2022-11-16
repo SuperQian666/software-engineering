@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-func TestConnect(t *testing.T) {
-	if err := Upload("C:\\Users\\Whisper\\GolandProjects\\software-engineering\\go.mod", "12345"); err != nil {
+func TestUpload(t *testing.T) {
+	if err := Upload("C:\\Users\\Whisper\\Pictures\\soft_engine", "test1111"); err != nil {
 		log.Fatal(err)
 	}
 }
 
 func TestDownload(t *testing.T) {
-	if err := Download("系统设计", "C:\\Users\\Whisper\\GolandProjects\\software-engineering\\testSpace\\testbackUp"); err != nil {
+	if err := Download("test1111", "C:\\Users\\Whisper\\Pictures\\soft_engine"); err != nil {
 		log.Fatal(err)
 	}
 }
