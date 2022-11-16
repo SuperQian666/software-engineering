@@ -173,8 +173,7 @@ func Download(remotePath, localPath string) error {
 	if err != nil {
 		return errors.New("ssh连接远程服务器失败")
 	}
-
-	s, err := sftpClient.Stat(remotePath)
+	s, err := sftpClient.Stat(path.Join(BaseUploadPath, remotePath))
 	if err != nil {
 		return errors.New("远程文件不存在")
 	}
@@ -182,9 +181,9 @@ func Download(remotePath, localPath string) error {
 	os.Mkdir(localPath, 0755)
 
 	if s.IsDir() {
-		return downloadDirectory(sftpClient, localPath, remotePath)
+		return downloadDirectory(sftpClient, localPath, path.Join(BaseUploadPath, remotePath))
 	} else {
-		return downloadFile(sftpClient, localPath, remotePath)
+		return downloadFile(sftpClient, localPath, path.Join(BaseUploadPath, remotePath))
 	}
 	return nil
 }

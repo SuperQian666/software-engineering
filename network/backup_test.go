@@ -12,5 +12,5 @@ func TestConnect(t *testing.T) {
 }
 
 func TestDownload(t *testing.T) {
-	Download("C:\\Users\\Whisper\\GolandProjects\\software-engineering\\testSpace\\", "/var/file/")
+	Download("test.ico", "C:\\Users\\Whisper\\GolandProjects\\software-engineering\\testSpace\\testbackUp")
 }
