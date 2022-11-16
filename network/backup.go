@@ -93,7 +93,7 @@ func downloadDirectory(sftpClient *sftp.Client, localPath, remotePath string) er
 			}
 			return downloadDirectory(sftpClient, localFilePath, remoteFilePath)
 		} else {
-			return downloadFile(sftpClient, path.Join(localPath, getBackDir.Name()), remotePath)
+			return downloadFile(sftpClient, localFilePath, remoteFilePath)
 		}
 	}
 	return nil
@@ -110,6 +110,9 @@ func uploadFile(sftpClient *sftp.Client, localFilePath string, remotePath string
 	defer srcFile.Close()
 	//上传到远端服务器的文件名,与本地路径末尾相同
 	var remoteFileName = localFilePath[strings.LastIndex(localFilePath, "\\")+1:]
+	if err := sftpClient.MkdirAll(remotePath); err != nil {
+		errors.New("远程文件夹创建失败")
+	}
 	//打开远程文件,如果不存在就创建一个
 	dstFile, err := sftpClient.Create(path.Join(remotePath, remoteFileName))
 	if err != nil {
@@ -136,12 +139,15 @@ func downloadFile(sftpClient *sftp.Client, localPath, remotePath string) error {
 	defer remoteFile.Close()
 
 	var localFileName = remotePath[strings.LastIndex(remotePath, "/")+1:]
+	if err := os.MkdirAll(localPath, 0755); err != nil {
+		errors.New("文件夹创建失败")
+	}
 	localFile, err := os.Create(path.Join(localPath, localFileName))
 	if err != nil {
 		return errors.New(fmt.Sprintf("local Create file error : %s", path.Join(localPath, localFileName)))
 	}
 	defer localFile.Close()
-	if _, err := remoteFile.WriteTo(localFile); err != nil {
+	if _, err = remoteFile.WriteTo(localFile); err != nil {
 		return err
 	}
 	return nil
@@ -178,7 +184,7 @@ func Download(remotePath, localPath string) error {
 		return errors.New("远程文件不存在")
 	}
 
-	os.Mkdir(localPath, 0755)
+	os.MkdirAll(localPath, 0755)
 
 	if s.IsDir() {
 		return downloadDirectory(sftpClient, localPath, path.Join(BaseUploadPath, remotePath))
