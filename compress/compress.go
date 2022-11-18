@@ -27,6 +27,38 @@ func Zip(src, dest string) (err error) {
 		}
 	}()
 
+	fi, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if !fi.IsDir() {
+		fh, err := zip.FileInfoHeader(fi)
+		if err != nil {
+			return err
+		}
+		fh.Name = src[strings.LastIndex(src, "\\"):]
+		fh.Method = zip.Deflate
+
+		w, err := zw.CreateHeader(fh)
+		if err != nil {
+			return err
+		}
+
+		fr, err := os.Open(src)
+		if err != nil {
+			return err
+		}
+		n, err := io.Copy(w, fr)
+		if err != nil {
+			return err
+		}
+		// 输出压缩的内容
+		fmt.Printf("成功压缩文件： %s, 共写入了 %d 个字符的数据\n", src, n)
+
+		return nil
+
+	}
 	// 下面来将文件写入 zw ，因为有可能会有很多个目录及文件，所以递归处理
 	return filepath.Walk(src, func(path string, fi os.FileInfo, errBack error) (err error) {
 		if errBack != nil {
@@ -36,7 +68,7 @@ func Zip(src, dest string) (err error) {
 		// 通过文件信息，创建 zip 的文件信息
 		fh, err := zip.FileInfoHeader(fi)
 		if err != nil {
-			return
+			return err
 		}
 
 		// 替换文件信息中的文件名
@@ -51,7 +83,7 @@ func Zip(src, dest string) (err error) {
 		// 写入文件信息，并返回一个 Write 结构
 		w, err := zw.CreateHeader(fh)
 		if err != nil {
-			return
+			return err
 		}
 
 		// 检测，如果不是标准文件就只写入头信息，不写入文件数据到 w

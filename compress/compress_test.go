@@ -3,13 +3,13 @@ package compress
 import "testing"
 
 func TestCompress(t *testing.T) {
-	if err := Zip("C:\\Users\\Whisper\\GolandProjects\\software-engineering\\oldDir", "C:\\Users\\Whisper\\GolandProjects\\software-engineering\\oldDir\\2"); err != nil {
+	if err := Zip("C:\\Users\\Whisper\\Pictures\\test\\2.jpg", "C:\\Users\\Whisper\\Pictures\\test\\1119"); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestUnCompress(t *testing.T) {
-	if err := UnZip("C:\\Users\\Whisper\\GolandProjects\\software-engineering\\oldDir\\2", "C:\\Users\\Whisper\\GolandProjects\\software-engineering\\oldDir\\3"); err != nil {
+	if err := UnZip("C:\\Users\\Whisper\\Pictures\\test\\1119", "C:\\Users\\Whisper\\Pictures\\test\\1119new"); err != nil {
 		t.Fatal(err)
 	}
 }
